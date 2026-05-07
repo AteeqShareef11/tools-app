@@ -1,22 +1,18 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useState, useCallback, useRef } from "react";
 
 // ════════════════════════════════════════════════════════════
 //  UTILS
 // ════════════════════════════════════════════════════════════
 
-
 // eslint-disable-next-line react-refresh/only-export-components
 export async function analyzeResume(resumeText) {
     const res = await fetch("/api/analyze-resume", {
         method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ resumeText }),
     });
-
     if (!res.ok) throw new Error(`API error ${res.status}`);
-
     return await res.json();
 }
 
@@ -87,6 +83,294 @@ export function scoreLabel(score) {
     if (score >= 70) return "Good";
     if (score >= 55) return "Needs Work";
     return "Poor";
+}
+
+// ════════════════════════════════════════════════════════════
+//  PDF UTILITIES
+// ════════════════════════════════════════════════════════════
+
+function loadScript(src) {
+    return new Promise((resolve, reject) => {
+        if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+        const s = document.createElement("script");
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+    });
+}
+
+/**
+ * Extract plain text from a PDF File object using PDF.js.
+ * Returns a Promise<string>.
+ */
+export async function extractTextFromPDF(file) {
+    await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js");
+    const pdfjsLib = window["pdfjs-dist/build/pdf"];
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const pages = [];
+    for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const strings = content.items.map((item) => item.str);
+        pages.push(strings.join(" "));
+    }
+    return pages.join("\n\n");
+}
+
+/**
+ * Generate and download a styled PDF from the analysis result using jsPDF.
+ */
+export async function downloadResumePDF(result) {
+    await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+
+    const r = result.optimized_resume;
+    const ci = r.contact_info || {};
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const marginL = 18;
+    const marginR = 18;
+    const contentW = pageW - marginL - marginR;
+    let y = 0;
+
+    const ACCENT = [194, 105, 42];      // #c2692a
+    const TEAL = [13, 115, 119];      // #0d7377
+    const INK = [26, 24, 20];        // #1a1814
+    const INK_MID = [90, 86, 78];       // #5a564e
+    const INK_DIM = [155, 150, 144];    // #9b9690
+    const BORDER = [228, 224, 216];    // #e4e0d8
+
+    function checkPage(needed = 8) {
+        if (y + needed > pageH - 14) {
+            doc.addPage();
+            y = 16;
+        }
+    }
+
+    function sectionHeader(title) {
+        checkPage(14);
+        y += 5;
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(...INK_DIM);
+        doc.text(title.toUpperCase(), marginL, y);
+        y += 2;
+        doc.setDrawColor(...BORDER);
+        doc.setLineWidth(0.3);
+        doc.line(marginL, y, pageW - marginR, y);
+        y += 5;
+    }
+
+    // ── Header block ──
+    doc.setFillColor(248, 246, 242);
+    doc.rect(0, 0, pageW, 36, "F");
+
+    y = 14;
+    if (ci.name) {
+        doc.setFontSize(20);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(...INK);
+        doc.text(ci.name, pageW / 2, y, { align: "center" });
+        y += 7;
+    }
+
+    const contactParts = [ci.email, ci.phone, ci.location, ci.linkedin, ci.github].filter(Boolean);
+    if (contactParts.length) {
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(...INK_MID);
+        doc.text(contactParts.join("  |  "), pageW / 2, y, { align: "center" });
+        y += 5;
+    }
+
+    // accent underline
+    doc.setDrawColor(...ACCENT);
+    doc.setLineWidth(1);
+    doc.line(marginL, y, pageW - marginR, y);
+    y += 8;
+
+    // ── ATS Score badge ──
+    const badgeX = pageW - marginR - 28;
+    const badgeY = 5;
+    const sc = result.ats_score;
+    const scoreCol = sc >= 80 ? [34, 197, 94] : sc >= 60 ? [245, 158, 11] : [239, 68, 68];
+    doc.setFillColor(...scoreCol.map(v => Math.round(v * 0.15 + 240)));
+    doc.roundedRect(badgeX, badgeY, 26, 14, 3, 3, "F");
+    doc.setDrawColor(...scoreCol);
+    doc.setLineWidth(0.4);
+    doc.roundedRect(badgeX, badgeY, 26, 14, 3, 3, "S");
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...scoreCol);
+    doc.text(String(sc), badgeX + 13, badgeY + 7.5, { align: "center" });
+    doc.setFontSize(6);
+    doc.setFont("helvetica", "normal");
+    doc.text("ATS SCORE", badgeX + 13, badgeY + 12.5, { align: "center" });
+
+    // ── Professional Summary ──
+    if (r.professional_summary) {
+        sectionHeader("Professional Summary");
+        doc.setDrawColor(...TEAL);
+        doc.setLineWidth(0.6);
+        doc.line(marginL, y - 1, marginL, y + 12);
+        doc.setFontSize(9.5);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(...INK_MID);
+        const sumLines = doc.splitTextToSize(r.professional_summary, contentW - 6);
+        checkPage(sumLines.length * 5 + 4);
+        doc.text(sumLines, marginL + 5, y);
+        y += sumLines.length * 5 + 3;
+    }
+
+    // ── Skills ──
+    if (r.skills?.length) {
+        sectionHeader("Skills");
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(...INK_MID);
+
+        let sx = marginL;
+        const pillH = 5.5;
+        const pillPadX = 3;
+        const pillGapX = 3;
+        const pillGapY = 2;
+        const rowStart = y;
+
+        r.skills.forEach((skill) => {
+            const tw = doc.getTextWidth(skill);
+            const pillW = tw + pillPadX * 2;
+            if (sx + pillW > pageW - marginR) {
+                sx = marginL;
+                y += pillH + pillGapY;
+                checkPage(pillH + 4);
+            }
+            doc.setFillColor(13, 115, 119, 0.08);
+            doc.setFillColor(230, 244, 244);
+            doc.roundedRect(sx, y - 3.5, pillW, pillH, 1.5, 1.5, "F");
+            doc.setDrawColor(...TEAL);
+            doc.setLineWidth(0.2);
+            doc.roundedRect(sx, y - 3.5, pillW, pillH, 1.5, 1.5, "S");
+            doc.setTextColor(...TEAL);
+            doc.text(skill, sx + pillPadX, y);
+            sx += pillW + pillGapX;
+        });
+        y += pillH + 3;
+    }
+
+    // ── Experience ──
+    if (r.experience?.length) {
+        sectionHeader("Experience");
+        r.experience.forEach((exp) => {
+            checkPage(14);
+            // Role header bar
+            doc.setFillColor(249, 248, 245);
+            doc.rect(marginL, y - 4, contentW, 8, "F");
+            doc.setDrawColor(...BORDER);
+            doc.setLineWidth(0.2);
+            doc.rect(marginL, y - 4, contentW, 8, "S");
+
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(...INK);
+            doc.text(exp.role, marginL + 3, y);
+
+            const meta = `${exp.company}  ·  ${exp.duration}`;
+            doc.setFontSize(8);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(...INK_DIM);
+            doc.text(meta, pageW - marginR - 3, y, { align: "right" });
+            y += 6;
+
+            exp.bullets?.forEach((bullet) => {
+                const bLines = doc.splitTextToSize(bullet, contentW - 8);
+                checkPage(bLines.length * 4.5 + 3);
+                doc.setFontSize(9);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(...INK_MID);
+                doc.setFillColor(...ACCENT);
+                doc.circle(marginL + 2, y - 1.2, 0.8, "F");
+                doc.text(bLines, marginL + 6, y);
+                y += bLines.length * 4.5 + 1;
+            });
+            y += 4;
+        });
+    }
+
+    // ── Education ──
+    if (r.education?.length) {
+        sectionHeader("Education");
+        r.education.forEach((edu) => {
+            checkPage(9);
+            doc.setFillColor(249, 248, 245);
+            doc.roundedRect(marginL, y - 4, contentW, 8, 2, 2, "F");
+            doc.setDrawColor(...BORDER);
+            doc.setLineWidth(0.2);
+            doc.roundedRect(marginL, y - 4, contentW, 8, 2, 2, "S");
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(...INK);
+            doc.text(edu.degree, marginL + 4, y);
+            doc.setFontSize(8.5);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(...INK_DIM);
+            doc.text(`${edu.institution}  ·  ${edu.year}`, pageW - marginR - 4, y, { align: "right" });
+            y += 8;
+        });
+    }
+
+    // ── Projects ──
+    if (r.projects?.length) {
+        sectionHeader("Projects");
+        r.projects.forEach((proj) => {
+            checkPage(12);
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(...INK);
+            doc.text(proj.name, marginL, y);
+            y += 5;
+            if (proj.description) {
+                const dLines = doc.splitTextToSize(proj.description, contentW);
+                checkPage(dLines.length * 4.5 + 2);
+                doc.setFontSize(9);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(...INK_MID);
+                doc.text(dLines, marginL, y);
+                y += dLines.length * 4.5 + 1;
+            }
+            if (proj.tech?.length) {
+                doc.setFontSize(8);
+                doc.setTextColor(...TEAL);
+                doc.text("Tech: " + proj.tech.join(", "), marginL, y);
+                y += 5;
+            }
+            y += 2;
+        });
+    }
+
+    // ── Footer on every page ──
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setDrawColor(...BORDER);
+        doc.setLineWidth(0.3);
+        doc.line(marginL, pageH - 10, pageW - marginR, pageH - 10);
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(...INK_DIM);
+        doc.text("ATS-Optimized Resume", marginL, pageH - 6);
+        doc.text(`Page ${i} of ${totalPages}`, pageW - marginR, pageH - 6, { align: "right" });
+    }
+
+    const filename = ci.name
+        ? `${ci.name.replace(/\s+/g, "_")}_resume.pdf`
+        : "optimized_resume.pdf";
+    doc.save(filename);
 }
 
 // ════════════════════════════════════════════════════════════
@@ -244,6 +528,46 @@ function CopyBtn({ text, label = "Copy" }) {
     );
 }
 
+function DownloadPDFBtn({ result }) {
+    const [status, setStatus] = useState("idle"); // "idle" | "loading" | "done" | "error"
+    const handleClick = async () => {
+        setStatus("loading");
+        try {
+            await downloadResumePDF(result);
+            setStatus("done");
+            setTimeout(() => setStatus("idle"), 2500);
+        } catch (e) {
+            console.error(e);
+            setStatus("error");
+            setTimeout(() => setStatus("idle"), 2500);
+        }
+    };
+    const styles = {
+        idle: { bg: T.accent, color: "#fff", border: T.accent },
+        loading: { bg: T.accentLight, color: T.accent, border: T.accentStroke },
+        done: { bg: "rgba(34,197,94,0.1)", color: "#22c55e", border: "rgba(34,197,94,0.3)" },
+        error: { bg: "rgba(239,68,68,0.1)", color: "#ef4444", border: "rgba(239,68,68,0.3)" },
+    };
+    const s = styles[status];
+    const labels = { idle: "⬇ Download PDF", loading: "Generating…", done: "✓ Downloaded!", error: "Error — retry" };
+    return (
+        <button
+            onClick={handleClick}
+            disabled={status === "loading"}
+            style={{
+                display: "flex", alignItems: "center", gap: "5px",
+                background: s.bg, border: `1px solid ${s.border}`,
+                borderRadius: "7px", padding: "5px 14px",
+                color: s.color, fontSize: "12px",
+                cursor: status === "loading" ? "not-allowed" : "pointer",
+                fontWeight: 600, transition: "all 0.2s",
+            }}
+        >
+            {labels[status]}
+        </button>
+    );
+}
+
 function Spinner() {
     return (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "14px", padding: "60px 0" }}>
@@ -264,11 +588,126 @@ function Spinner() {
 }
 
 // ════════════════════════════════════════════════════════════
+//  PDF UPLOAD ZONE
+// ════════════════════════════════════════════════════════════
+
+function PDFUploadZone({ onExtracted, onError }) {
+    const [dragOver, setDragOver] = useState(false);
+    const [parsing, setParsing] = useState(false);
+    const [fileName, setFileName] = useState(null);
+    const fileRef = useRef(null);
+
+    const handleFile = useCallback(async (file) => {
+        if (!file || file.type !== "application/pdf") {
+            onError("Please upload a valid PDF file.");
+            return;
+        }
+        setParsing(true);
+        setFileName(file.name);
+        try {
+            const text = await extractTextFromPDF(file);
+            if (!text.trim()) throw new Error("No readable text found in PDF. Try a text-based PDF.");
+            onExtracted(text);
+        } catch (e) {
+            onError(e.message || "Failed to read PDF.");
+            setFileName(null);
+        } finally {
+            setParsing(false);
+        }
+    }, [onExtracted, onError]);
+
+    const onDrop = useCallback((e) => {
+        e.preventDefault();
+        setDragOver(false);
+        const file = e.dataTransfer.files?.[0];
+        if (file) handleFile(file);
+    }, [handleFile]);
+
+    const onInputChange = useCallback((e) => {
+        const file = e.target.files?.[0];
+        if (file) handleFile(file);
+        e.target.value = "";
+    }, [handleFile]);
+
+    return (
+        <div
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={onDrop}
+            onClick={() => !parsing && fileRef.current?.click()}
+            style={{
+                border: `2px dashed ${dragOver ? T.accent : T.borderMid}`,
+                borderRadius: "10px",
+                padding: "16px 20px",
+                marginBottom: "10px",
+                background: dragOver ? T.accentLight : T.surfaceAlt,
+                cursor: parsing ? "not-allowed" : "pointer",
+                transition: "all 0.2s",
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+            }}
+        >
+            <input
+                ref={fileRef}
+                type="file"
+                accept="application/pdf"
+                onChange={onInputChange}
+                style={{ display: "none" }}
+            />
+
+            {/* Icon */}
+            <div style={{
+                width: "36px", height: "36px", borderRadius: "8px", flexShrink: 0,
+                background: dragOver ? T.accentLight : "rgba(194,105,42,0.08)",
+                border: `1px solid ${T.accentStroke}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: "18px",
+            }}>
+                {parsing ? (
+                    <span style={{
+                        display: "block", width: "16px", height: "16px", borderRadius: "50%",
+                        border: `2px solid ${T.border}`, borderTopColor: T.accent,
+                        animation: "spin 0.75s linear infinite",
+                    }} />
+                ) : "📄"}
+            </div>
+
+            {/* Text */}
+            <div style={{ minWidth: 0 }}>
+                <p style={{ margin: "0 0 2px", fontSize: "13px", fontWeight: 600, color: T.ink }}>
+                    {parsing
+                        ? "Reading PDF…"
+                        : fileName
+                            ? `✓ ${fileName}`
+                            : "Upload PDF resume"}
+                </p>
+                <p style={{ margin: 0, fontSize: "11px", color: T.inkDim }}>
+                    {parsing
+                        ? "Extracting text with PDF.js"
+                        : "Drag & drop or click to browse · text-based PDFs only"}
+                </p>
+            </div>
+
+            {/* Badge */}
+            {!parsing && (
+                <span style={{
+                    marginLeft: "auto", flexShrink: 0,
+                    fontSize: "10px", fontWeight: 700, letterSpacing: "0.05em",
+                    padding: "2px 8px", borderRadius: "99px",
+                    background: T.accentLight, color: T.accent,
+                    border: `1px solid ${T.accentStroke}`,
+                }}>PDF</span>
+            )}
+        </div>
+    );
+}
+
+// ════════════════════════════════════════════════════════════
 //  RESULT TABS: Overview / Optimized Resume
 // ════════════════════════════════════════════════════════════
 
 function OverviewTab({ result }) {
-    const r = result.optimized_resume;
     return (
         <div>
             {/* score + summary row */}
@@ -321,12 +760,15 @@ function ResumeTab({ result }) {
             {/* top bar */}
             <div style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
-                marginBottom: "20px",
+                marginBottom: "20px", gap: "8px", flexWrap: "wrap",
             }}>
                 <span style={{ fontSize: "13px", color: T.inkDim }}>
-                    ATS-optimized · ready to paste
+                    ATS-optimized · ready to use
                 </span>
-                <CopyBtn text={exportText} label="Copy resume" />
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                    <CopyBtn text={exportText} label="Copy text" />
+                    <DownloadPDFBtn result={result} />
+                </div>
             </div>
 
             {/* contact */}
@@ -451,6 +893,7 @@ export default function ResumeAnalyzer() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [tab, setTab] = useState("overview"); // "overview" | "resume"
+    const [uploadError, setUploadError] = useState(null);
     const resultRef = useRef(null);
 
     const handleAnalyze = useCallback(async () => {
@@ -470,6 +913,11 @@ export default function ResumeAnalyzer() {
             setLoading(false);
         }
     }, [resumeText]);
+
+    const handlePDFExtracted = useCallback((text) => {
+        setResumeText(text);
+        setUploadError(null);
+    }, []);
 
     const charCount = resumeText.trim().length;
     const ready = charCount > 100;
@@ -492,6 +940,7 @@ export default function ResumeAnalyzer() {
         ::-webkit-scrollbar-track{background:transparent;}
         ::-webkit-scrollbar-thumb{background:${T.borderMid};border-radius:3px;}
         @keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes spin{to{transform:rotate(360deg)}}
       `}</style>
 
             {/* ── HEADER ── */}
@@ -510,7 +959,7 @@ export default function ResumeAnalyzer() {
                         Resume Analyzer
                     </h1>
                     <p style={{ margin: 0, fontSize: "12px", color: T.inkDim }}>
-                        ATS optimization · Bullet rewriting · Score & feedback
+                        ATS optimization · Bullet rewriting · Score & feedback · PDF export
                     </p>
                 </div>
             </header>
@@ -537,21 +986,46 @@ export default function ResumeAnalyzer() {
                             display: "flex", alignItems: "center", justifyContent: "space-between",
                         }}>
                             <div>
-                                <span style={{ fontSize: "14px", fontWeight: 600, color: T.ink }}>Paste Your Resume</span>
-                                <span style={{ fontSize: "12px", color: T.inkDim, marginLeft: "10px" }}>plain text</span>
+                                <span style={{ fontSize: "14px", fontWeight: 600, color: T.ink }}>Your Resume</span>
+                                <span style={{ fontSize: "12px", color: T.inkDim, marginLeft: "10px" }}>paste text or upload PDF</span>
                             </div>
                             {charCount > 0 && (
                                 <span style={{ fontSize: "11px", color: T.inkDim }}>{charCount.toLocaleString()} chars</span>
                             )}
                         </div>
 
+                        {/* PDF Upload Zone */}
+                        <div style={{ padding: "14px 18px 0" }}>
+                            <PDFUploadZone
+                                onExtracted={handlePDFExtracted}
+                                onError={(msg) => setUploadError(msg)}
+                            />
+                            {uploadError && (
+                                <p style={{
+                                    fontSize: "12px", color: "#ef4444", marginBottom: "10px",
+                                    padding: "6px 10px", borderRadius: "6px",
+                                    background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)",
+                                }}>{uploadError}</p>
+                            )}
+
+                            {/* Divider */}
+                            <div style={{
+                                display: "flex", alignItems: "center", gap: "10px",
+                                marginBottom: "10px",
+                            }}>
+                                <div style={{ flex: 1, height: "1px", background: T.border }} />
+                                <span style={{ fontSize: "11px", color: T.inkDim, fontWeight: 500 }}>or paste below</span>
+                                <div style={{ flex: 1, height: "1px", background: T.border }} />
+                            </div>
+                        </div>
+
                         <textarea
                             value={resumeText}
                             onChange={(e) => setResumeText(e.target.value)}
                             placeholder={SAMPLE}
-                            rows={22}
+                            rows={18}
                             style={{
-                                width: "100%", border: "none", padding: "16px 18px",
+                                width: "100%", border: "none", padding: "0 18px 16px",
                                 fontSize: "13px", lineHeight: 1.7, color: T.ink,
                                 background: "transparent", resize: "vertical",
                             }}
@@ -652,9 +1126,7 @@ export default function ResumeAnalyzer() {
 
                 {/* ── EMPTY RIGHT STATE (before any run) ── */}
                 {!loading && !result && !error && (
-                    <div style={{
-                        display: "none", /* hidden — single col layout when no results */
-                    }} />
+                    <div style={{ display: "none" }} />
                 )}
             </div>
         </div>
