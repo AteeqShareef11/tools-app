@@ -9,7 +9,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/proposal-generator" replace />} />
         <Route path="/proposal-generator" element={<UpworkProposalGenerator />} />
-        <Route path="/resumean-alyzer" element={<ResumeAnalyzer />} />
+        <Route path="/resume-alyzer" element={<ResumeAnalyzer />} />
       </Routes>
     </BrowserRouter>
   )
