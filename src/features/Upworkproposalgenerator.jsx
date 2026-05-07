@@ -138,6 +138,7 @@ const generateProposalViaAPI = async () => {
     );
 
     const data = await response.json();
+    console.log("data", data)
 
     return data.result;
 };
@@ -157,16 +158,22 @@ const useProposalGenerator = () => {
     const [form, setForm] = useState(INITIAL_FORM);
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
-    const [proposal, setProposal] = useState(null);
+
+    // proposal is now STRING
+    const [proposal, setProposal] = useState("");
+
     const [apiError, setApiError] = useState(null);
     const [copied, setCopied] = useState(null);
 
     const updateField = useCallback((field, value) => {
         setForm((prev) => ({ ...prev, [field]: value }));
+
         setErrors((prev) => {
             if (!prev[field]) return prev;
+
             const next = { ...prev };
             delete next[field];
+
             return next;
         });
     }, []);
@@ -174,12 +181,13 @@ const useProposalGenerator = () => {
     const resetForm = useCallback(() => {
         setForm(INITIAL_FORM);
         setErrors({});
-        setProposal(null);
+        setProposal("");
         setApiError(null);
     }, []);
 
     const handleSubmit = useCallback(async () => {
         const validationErrors = validateForm(form);
+
         if (Object.keys(validationErrors).length > 0) {
             setErrors(validationErrors);
             return;
@@ -187,13 +195,18 @@ const useProposalGenerator = () => {
 
         setLoading(true);
         setApiError(null);
-        setProposal(null);
+        setProposal("");
 
         try {
             const result = await generateProposalViaAPI(form);
+
+            // result is plain text now
             setProposal(result);
+
         } catch (err) {
-            setApiError(err.message || "Something went wrong. Please try again.");
+            setApiError(
+                err.message || "Something went wrong. Please try again."
+            );
         } finally {
             setLoading(false);
         }
@@ -202,8 +215,13 @@ const useProposalGenerator = () => {
     const copyToClipboard = useCallback(async (key, text) => {
         try {
             await navigator.clipboard.writeText(text);
+
             setCopied(key);
-            setTimeout(() => setCopied(null), 2200);
+
+            setTimeout(() => {
+                setCopied(null);
+            }, 2200);
+
         } catch {
             setCopied(null);
         }
@@ -211,8 +229,9 @@ const useProposalGenerator = () => {
 
     const copyFullProposal = useCallback(async () => {
         if (!proposal) return;
-        const full = `${proposal.hookLine}\n\n${proposal.fullProposal}\n\n${proposal.closingLine}`;
-        await copyToClipboard("all", full);
+
+        await copyToClipboard("all", proposal);
+
     }, [proposal, copyToClipboard]);
 
     return {
@@ -658,7 +677,8 @@ const ProposalOutput = ({ proposal, loading, apiError, copied, onCopy, onCopyAll
                 </button>
             </div>
 
-            {PROPOSAL_SECTIONS.map((section) => (
+            {proposal}
+            {/* {PROPOSAL_SECTIONS.map((section) => (
                 <ProposalSection
                     key={section.key}
                     section={section}
@@ -666,7 +686,7 @@ const ProposalOutput = ({ proposal, loading, apiError, copied, onCopy, onCopyAll
                     isCopied={copied === section.key}
                     onCopy={onCopy}
                 />
-            ))}
+            ))} */}
         </div>
     );
 };
