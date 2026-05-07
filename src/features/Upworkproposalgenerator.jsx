@@ -124,25 +124,22 @@ Return ONLY valid JSON (no markdown, no backticks) with exactly this structure:
 };
 
 const generateProposalViaAPI = async () => {
-    const response = await fetch("/api/generateProposal", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            prompt: "Write a freelance proposal for a React developer job",
-        }),
-    });
+    const response = await fetch(
+        "https://tools-app-sable.vercel.app/api/generateProposal",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                prompt: "Write a freelance proposal for a React developer job",
+            }),
+        }
+    );
 
     const data = await response.json();
 
-    const rawText =
-        data?.content
-            ?.filter(c => c.type === "text")
-            ?.map(c => c.text)
-            ?.join("") || "";
-
-    return JSON.parse(rawText);
+    return data.result;
 };
 
 // ============================================================
