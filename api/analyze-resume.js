@@ -95,13 +95,40 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-
     const raw = data.choices?.[0]?.message?.content || "";
 
-    // safe JSON parse
+    function extractJSON(text) {
+      try {
+        // remove markdown
+        let cleaned = text
+          .replace(/```json/g, "")
+          .replace(/```/g, "")
+          .trim();
+
+        // find first valid json object
+        const firstBrace = cleaned.indexOf("{");
+        const lastBrace = cleaned.lastIndexOf("}");
+
+        if (firstBrace === -1 || lastBrace === -1) {
+          throw new Error("No JSON object found");
+        }
+
+        cleaned = cleaned.slice(firstBrace, lastBrace + 1);
+
+        // remove trailing commas
+        cleaned = cleaned.replace(/,\s*([}\]])/g, "$1");
+
+        return JSON.parse(cleaned);
+      } catch (err) {
+        console.error("RAW MODEL OUTPUT:\n", text);
+        throw err;
+      }
+    }
+
     let parsed;
+
     try {
-      parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
+      parsed = extractJSON(raw);
     } catch (e) {
       return res.status(500).json({
         error: "Invalid JSON from model",
