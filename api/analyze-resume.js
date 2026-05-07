@@ -67,27 +67,27 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "resumeText is required" });
     }
 
-    const response = await fetch("https://api.x.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+    const response = await fetch(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            {
+              role: "user",
+              content: `Analyze and optimize this resume:\n\n${resumeText}`,
+            },
+          ],
+          temperature: 0.4,
+        }),
       },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        messages: [
-          {
-            role: "system",
-            content: SYSTEM_PROMPT, // move your SYSTEM_PROMPT here or import it
-          },
-          {
-            role: "user",
-            content: `Analyze and optimize this resume:\n\n${resumeText}`,
-          },
-        ],
-        temperature: 0.4,
-      }),
-    });
+    );
 
     if (!response.ok) {
       const err = await response.text();
