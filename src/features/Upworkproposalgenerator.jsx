@@ -4,6 +4,7 @@
 // ============================================================
 
 import { useState, useCallback } from "react";
+import GrokResponse from "../components/response/Grokresponse";
 
 // ============================================================
 // SECTION 1: THEME & STATIC DATA (utils/theme.js equivalent)
@@ -115,30 +116,24 @@ ${jobDescription}
 
 **Experience Level:** ${levelMap[experienceLevel] || experienceLevel}
 
-Return ONLY valid JSON (no markdown, no backticks) with exactly this structure:
-{
-  "hookLine": "A powerful 1-2 sentence opening that immediately addresses the client's main pain point or goal. Make it personal, specific, and compelling. Do NOT start with 'I'.",
-  "fullProposal": "A complete 3-4 paragraph professional Upwork proposal. Paragraph 1: Demonstrate understanding of the project. Paragraph 2: Highlight relevant skills and specific experience. Paragraph 3: Briefly explain your approach/process. Paragraph 4: Mention availability, turnaround, and invite conversation.",
-  "closingLine": "A confident 1-2 sentence closing with a soft call-to-action that invites the client to reply."
-}`;
+`;
 };
 
-const generateProposalViaAPI = async () => {
+// AFTER
+const generateProposalViaAPI = async (form) => {          // ✅ accept form
+    const prompt = buildProposalPrompt(form);              // ✅ build dynamic prompt
+
     const response = await fetch(
         "https://tools-app-sable.vercel.app/api/generateProposal",
         {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                prompt: "Write a freelance proposal for a React developer job",
-            }),
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt }),              // ✅ send it
         }
     );
 
     const data = await response.json();
-    console.log("data", data)
+    console.log("data", data);
 
     return data.result;
 };
@@ -560,7 +555,7 @@ const ProposalSection = ({ section, text, isCopied, onCopy }) => (
 );
 
 // -- ProposalOutput --
-const ProposalOutput = ({ proposal, loading, apiError, copied, onCopy, onCopyAll }) => {
+const ProposalOutput = ({ proposal, loading, apiError, copied, onCopyAll }) => {
     if (loading) return <LoadingSpinner />;
 
     if (apiError) {
@@ -677,7 +672,9 @@ const ProposalOutput = ({ proposal, loading, apiError, copied, onCopy, onCopyAll
                 </button>
             </div>
 
-            {proposal}
+
+            <GrokResponse content={proposal} />
+
             {/* {PROPOSAL_SECTIONS.map((section) => (
                 <ProposalSection
                     key={section.key}
