@@ -51,11 +51,6 @@ const FIELD_CONSTRAINTS = {
     userSkills: { min: 5, max: 500 },
 };
 
-const PROPOSAL_SECTIONS = [
-    { key: "hookLine", label: "Hook Line", icon: "⚡", description: "Opening that grabs attention" },
-    { key: "fullProposal", label: "Full Proposal", icon: "📄", description: "Complete pitch body" },
-    { key: "closingLine", label: "Closing Line", icon: "🎯", description: "Strong call-to-action" },
-];
 
 // ============================================================
 // SECTION 2: VALIDATION UTILS (utils/validation.js equivalent)
