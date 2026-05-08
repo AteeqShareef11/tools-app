@@ -108,361 +108,87 @@ export async function extractTextFromPDF(file) {
     return pages.join("\n\n");
 }
 
-/**
- * downloadResumePDF — fully rewritten for correct spacing & layout
- *
- * Key fixes vs original:
- *  - Header height is dynamic (grows with content, never clips)
- *  - Summary left-bar height tracks actual wrapped line count
- *  - Skills pills: y advances correctly between rows; no overlap
- *  - Experience: checkPage BEFORE drawing role bar, not after
- *  - Bullets: line-height 5.2 instead of 4.5; proper gap between entries
- *  - Every section has consistent pre/post breathing room
- *  - checkPage called before every draw operation, not after
- *  - Bottom margin guard: last 18 mm of page is always kept clear
- */
-
-
-
 export async function downloadResumePDF(result) {
     await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: "mm", format: "a4" });
-
     const r = result.optimized_resume;
     const ci = r.contact_info || {};
-
-    // ── Page geometry ──────────────────────────────────────────
-    const pageW = doc.internal.pageSize.getWidth();   // 210
-    const pageH = doc.internal.pageSize.getHeight();  // 297
-    const mL = 16;   // left margin
-    const mR = 16;   // right margin
-    const mBot = 18;   // bottom guard — never draw below pageH - mBot
-    const cW = pageW - mL - mR;                    // 178 mm usable width
-
-    // ── Colour palette ─────────────────────────────────────────
-    const ACCENT = [194, 105, 42];  // #c2692a  warm amber
-    const TEAL = [13, 115, 119];  // #0d7377
-    const INK = [26, 24, 20];  // #1a1814  near-black
-    const INK_MID = [90, 86, 78];  // #5a564e
-    const INK_DIM = [155, 150, 144];  // #9b9690
-    const BG_HEAD = [248, 246, 242];  // #f8f6f2  warm off-white
-    const BG_ROW = [249, 248, 245];  // #f9f8f5  slightly darker
-    const BORDER = [228, 224, 216];  // #e4e0d8
-    const TEAL_BG = [230, 244, 244];  // skill pill fill
-
-    // ── Cursor ─────────────────────────────────────────────────
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const marginL = 18, marginR = 18, contentW = pageW - marginL - marginR;
     let y = 0;
-
-    // ── Helpers ────────────────────────────────────────────────
-
-    /** Advance to new page if fewer than `needed` mm remain. */
-    function ensureSpace(needed) {
-        if (y + needed > pageH - mBot) {
-            doc.addPage();
-            y = 20;
-        }
+    const ACCENT = [194, 105, 42], TEAL = [13, 115, 119], INK = [26, 24, 20], INK_MID = [90, 86, 78], INK_DIM = [155, 150, 144], BORDER = [228, 224, 216];
+    function checkPage(n = 8) { if (y + n > pageH - 14) { doc.addPage(); y = 16; } }
+    function sectionHeader(title) {
+        checkPage(14); y += 5;
+        doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(...INK_DIM);
+        doc.text(title.toUpperCase(), marginL, y); y += 2;
+        doc.setDrawColor(...BORDER); doc.setLineWidth(0.3); doc.line(marginL, y, pageW - marginR, y); y += 5;
     }
-
-    /**
-     * Draw a section heading row:
-     *   LABEL TEXT ───────────────────────────────
-     * Returns after the divider line with 4 mm gap.
-     */
-    function sectionHeading(title) {
-        ensureSpace(16);
-        y += 7; // breathing room above heading
-        doc.setFontSize(7.5);
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(...INK_DIM);
-        doc.text(title.toUpperCase(), mL, y);
-        y += 2.5;
-        doc.setDrawColor(...BORDER);
-        doc.setLineWidth(0.25);
-        doc.line(mL, y, pageW - mR, y);
-        y += 4.5;
-    }
-
-    /**
-     * Render a text block with word-wrap.
-     * Returns the number of lines printed.
-     */
-    function wrappedText(text, x, startY, maxW, size, style, colorArr) {
-        doc.setFontSize(size);
-        doc.setFont("helvetica", style);
-        doc.setTextColor(...colorArr);
-        const lines = doc.splitTextToSize(text, maxW);
-        doc.text(lines, x, startY);
-        return lines.length;
-    }
-
-    // ════════════════════════════════════════════════════════════
-    //  HEADER
-    // ════════════════════════════════════════════════════════════
-
-    // Measure content height first so we can draw bg rect correctly.
-    const contactParts = [ci.email, ci.phone, ci.location, ci.linkedin, ci.github].filter(Boolean);
-    const contactLine = contactParts.join("  |  ");
-
-    // Estimate header height:
-    //   top-pad(10) + name(8) + gap(5) + contact(4) + gap(4) + accent-rule(1) + bottom-pad(6)
-    const headerH = ci.name
-        ? (ci.name ? 10 + 8 + 5 : 10) + (contactLine ? 4 + 4 : 0) + 1 + 8
-        : 30;
-
-    doc.setFillColor(...BG_HEAD);
-    doc.rect(0, 0, pageW, headerH, "F");
-
+    doc.setFillColor(248, 246, 242); doc.rect(0, 0, pageW, 36, "F");
     y = 14;
-
-    if (ci.name) {
-        doc.setFontSize(22);
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(...INK);
-        doc.text(ci.name, pageW / 2, y, { align: "center" });
-        y += 8;
-    }
-
-    if (contactLine) {
-        doc.setFontSize(8);
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(...INK_MID);
-        doc.text(contactLine, pageW / 2, y, { align: "center" });
-        y += 6;
-    }
-
-    // Accent underline
-    doc.setDrawColor(...ACCENT);
-    doc.setLineWidth(0.85);
-    doc.line(mL, y, pageW - mR, y);
-    y = headerH + 2; // land cleanly below header bg
-
-    // ════════════════════════════════════════════════════════════
-    //  PROFESSIONAL SUMMARY
-    // ════════════════════════════════════════════════════════════
-
+    if (ci.name) { doc.setFontSize(20); doc.setFont("helvetica", "bold"); doc.setTextColor(...INK); doc.text(ci.name, pageW / 2, y, { align: "center" }); y += 7; }
+    const cp = [ci.email, ci.phone, ci.location, ci.linkedin, ci.github].filter(Boolean);
+    if (cp.length) { doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...INK_MID); doc.text(cp.join("  |  "), pageW / 2, y, { align: "center" }); y += 5; }
+    doc.setDrawColor(...ACCENT); doc.setLineWidth(1); doc.line(marginL, y, pageW - marginR, y); y += 8;
     if (r.professional_summary) {
-        sectionHeading("Professional Summary");
-
-        doc.setFontSize(9.5);
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(...INK_MID);
-
-        const sumW = cW - 8;  // indent 8 mm from left bar
-        const sumLines = doc.splitTextToSize(r.professional_summary, sumW);
-        const lineH = 5.0;
-        const blockH = sumLines.length * lineH;
-
-        ensureSpace(blockH + 6);
-
-        // Left accent bar — sized to actual text height
-        doc.setDrawColor(...TEAL);
-        doc.setLineWidth(0.6);
-        doc.line(mL, y - 1, mL, y + blockH - 1);
-
-        doc.text(sumLines, mL + 6, y);
-        y += blockH + 5;
+        sectionHeader("Professional Summary");
+        doc.setDrawColor(...TEAL); doc.setLineWidth(0.6); doc.line(marginL, y - 1, marginL, y + 12);
+        doc.setFontSize(9.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...INK_MID);
+        const sl = doc.splitTextToSize(r.professional_summary, contentW - 6);
+        checkPage(sl.length * 5 + 4); doc.text(sl, marginL + 5, y); y += sl.length * 5 + 3;
     }
-
-    // ════════════════════════════════════════════════════════════
-    //  SKILLS
-    // ════════════════════════════════════════════════════════════
-
     if (r.skills?.length) {
-        sectionHeading("Skills");
-
-        doc.setFontSize(9);
-        doc.setFont("helvetica", "normal");
-
-        const pillH = 5.5;
-        const pillPadX = 3.5;
-        const gapX = 3;
-        const gapY = 3.5;
-
-        let sx = mL;
-        // Track whether we're on the first row to avoid a leading y-advance
-        let firstRow = true;
-
-        ensureSpace(pillH + gapY + 4);
-
-        r.skills.forEach((skill) => {
-            const tw = doc.getTextWidth(skill);
-            const pillW = tw + pillPadX * 2;
-
-            // Wrap to next row if pill doesn't fit
-            if (!firstRow && sx + pillW > pageW - mR) {
-                sx = mL;
-                y += pillH + gapY;
-                ensureSpace(pillH + 4);
-            }
-
-            // Draw pill background
-            doc.setFillColor(...TEAL_BG);
-            doc.roundedRect(sx, y - 3.8, pillW, pillH, 1.5, 1.5, "F");
-
-            // Draw pill border
-            doc.setDrawColor(...TEAL);
-            doc.setLineWidth(0.2);
-            doc.roundedRect(sx, y - 3.8, pillW, pillH, 1.5, 1.5, "S");
-
-            // Draw text
-            doc.setTextColor(...TEAL);
-            doc.text(skill, sx + pillPadX, y);
-
-            sx += pillW + gapX;
-            firstRow = false;
-        });
-
-        // Advance past the last pill row
-        y += pillH + 4;
+        sectionHeader("Skills");
+        doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(...INK_MID);
+        let sx = marginL; const pH = 5.5, pPX = 3, pGX = 3, pGY = 2;
+        r.skills.forEach(sk => {
+            const tw = doc.getTextWidth(sk), pw = tw + pPX * 2;
+            if (sx + pw > pageW - marginR) { sx = marginL; y += pH + pGY; checkPage(pH + 4); }
+            doc.setFillColor(230, 244, 244); doc.roundedRect(sx, y - 3.5, pw, pH, 1.5, 1.5, "F");
+            doc.setDrawColor(...TEAL); doc.setLineWidth(0.2); doc.roundedRect(sx, y - 3.5, pw, pH, 1.5, 1.5, "S");
+            doc.setTextColor(...TEAL); doc.text(sk, sx + pPX, y); sx += pw + pGX;
+        }); y += pH + 3;
     }
-
-    // ════════════════════════════════════════════════════════════
-    //  EXPERIENCE
-    // ════════════════════════════════════════════════════════════
-
     if (r.experience?.length) {
-        sectionHeading("Experience");
-
-        r.experience.forEach((exp, idx) => {
-            const roleBarH = 9;
-
-            // ── Role header bar ──
-            // Check page BEFORE drawing anything
-            ensureSpace(roleBarH + 10);
-
-            doc.setFillColor(...BG_ROW);
-            doc.rect(mL, y, cW, roleBarH, "F");
-            doc.setDrawColor(...BORDER);
-            doc.setLineWidth(0.2);
-            doc.rect(mL, y, cW, roleBarH, "S");
-
-            // Role (left)
-            doc.setFontSize(10);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(...INK);
-            doc.text(exp.role || "", mL + 4, y + 6);
-
-            // Company · duration (right)
-            const meta = [exp.company, exp.duration].filter(Boolean).join("  ·  ");
-            doc.setFontSize(8);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(...INK_DIM);
-            doc.text(meta, pageW - mR - 4, y + 6, { align: "right" });
-
-            y += roleBarH + 3;
-
-            // ── Bullets ──
-            const bulletLineH = 5.2;
-            const bulletIndent = mL + 7;
-            const bulletW = cW - 9;
-
-            (exp.bullets || []).forEach((bullet) => {
-                const bLines = doc.splitTextToSize(bullet, bulletW);
-                const bHeight = bLines.length * bulletLineH;
-
-                ensureSpace(bHeight + 3);
-
-                // Bullet dot
-                doc.setFillColor(...ACCENT);
-                doc.circle(mL + 2.8, y - 1, 0.75, "F");
-
-                // Bullet text
-                doc.setFontSize(9);
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(...INK_MID);
-                doc.text(bLines, bulletIndent, y);
-
-                y += bHeight + 2.5;
-            });
-
-            // Gap between experience entries (less after last)
-            y += idx < r.experience.length - 1 ? 5 : 3;
+        sectionHeader("Experience");
+        r.experience.forEach(exp => {
+            checkPage(14);
+            doc.setFillColor(249, 248, 245); doc.rect(marginL, y - 4, contentW, 8, "F");
+            doc.setDrawColor(...BORDER); doc.setLineWidth(0.2); doc.rect(marginL, y - 4, contentW, 8, "S");
+            doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(...INK); doc.text(exp.role, marginL + 3, y);
+            doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...INK_DIM);
+            doc.text(`${exp.company}  ·  ${exp.duration}`, pageW - marginR - 3, y, { align: "right" }); y += 6;
+            exp.bullets?.forEach(b => {
+                const bl = doc.splitTextToSize(b, contentW - 8); checkPage(bl.length * 4.5 + 3);
+                doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(...INK_MID);
+                doc.setFillColor(...ACCENT); doc.circle(marginL + 2, y - 1.2, 0.8, "F");
+                doc.text(bl, marginL + 6, y); y += bl.length * 4.5 + 1;
+            }); y += 4;
         });
     }
-
-    // ════════════════════════════════════════════════════════════
-    //  EDUCATION
-    // ════════════════════════════════════════════════════════════
-
     if (r.education?.length) {
-        sectionHeading("Education");
-
-        r.education.forEach((edu) => {
-            const rowH = 9;
-            ensureSpace(rowH + 4);
-
-            doc.setFillColor(...BG_ROW);
-            doc.roundedRect(mL, y, cW, rowH, 2, 2, "F");
-            doc.setDrawColor(...BORDER);
-            doc.setLineWidth(0.2);
-            doc.roundedRect(mL, y, cW, rowH, 2, 2, "S");
-
-            // Degree (left)
-            doc.setFontSize(10);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(...INK);
-            doc.text(edu.degree || "", mL + 5, y + 6);
-
-            // Institution · year (right)
-            const eduMeta = [edu.institution, edu.year].filter(Boolean).join("  ·  ");
-            doc.setFontSize(8.5);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(...INK_DIM);
-            doc.text(eduMeta, pageW - mR - 5, y + 6, { align: "right" });
-
-            y += rowH + 5;
+        sectionHeader("Education");
+        r.education.forEach(edu => {
+            checkPage(9);
+            doc.setFillColor(249, 248, 245); doc.roundedRect(marginL, y - 4, contentW, 8, 2, 2, "F");
+            doc.setDrawColor(...BORDER); doc.setLineWidth(0.2); doc.roundedRect(marginL, y - 4, contentW, 8, 2, 2, "S");
+            doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(...INK); doc.text(edu.degree, marginL + 4, y);
+            doc.setFontSize(8.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...INK_DIM);
+            doc.text(`${edu.institution}  ·  ${edu.year}`, pageW - marginR - 4, y, { align: "right" }); y += 8;
         });
     }
-
-    // ════════════════════════════════════════════════════════════
-    //  PROJECTS
-    // ════════════════════════════════════════════════════════════
-
     if (r.projects?.length) {
-        sectionHeading("Projects");
-
-        r.projects.forEach((proj, idx) => {
-            ensureSpace(16);
-
-            // Project name
-            doc.setFontSize(10);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(...INK);
-            doc.text(proj.name || "", mL, y);
-            y += 5.5;
-
-            // Description
-            if (proj.description) {
-                const dLines = doc.splitTextToSize(proj.description, cW);
-                const dH = dLines.length * 5.0;
-                ensureSpace(dH + 3);
-                doc.setFontSize(9);
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(...INK_MID);
-                doc.text(dLines, mL, y);
-                y += dH + 2;
-            }
-
-            // Tech tags
-            if (proj.tech?.length) {
-                ensureSpace(6);
-                doc.setFontSize(8);
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(...TEAL);
-                doc.text("Tech: " + proj.tech.join(", "), mL, y);
-                y += 5;
-            }
-
-            y += idx < r.projects.length - 1 ? 4 : 2;
+        sectionHeader("Projects");
+        r.projects.forEach(p => {
+            checkPage(12); doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(...INK); doc.text(p.name, marginL, y); y += 5;
+            if (p.description) { const dl = doc.splitTextToSize(p.description, contentW); checkPage(dl.length * 4.5 + 2); doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(...INK_MID); doc.text(dl, marginL, y); y += dl.length * 4.5 + 1; }
+            if (p.tech?.length) { doc.setFontSize(8); doc.setTextColor(...TEAL); doc.text("Tech: " + p.tech.join(", "), marginL, y); y += 5; }
+            y += 2;
         });
     }
-
-    // ── Save ───────────────────────────────────────────────────
-    const filename = ci.name
-        ? `${ci.name.replace(/\s+/g, "_")}_resume.pdf`
-        : "optimized_resume.pdf";
-
+    const filename = ci.name ? `${ci.name.replace(/\s+/g, "_")}_resume.pdf` : "optimized_resume.pdf";
     doc.save(filename);
 }
 
