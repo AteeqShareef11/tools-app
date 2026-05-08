@@ -90,27 +90,49 @@ const validateForm = (fields) => {
 // SECTION 3: API LAYER (utils/proposalApi.js equivalent)
 // ============================================================
 
-const buildProposalPrompt = ({ jobTitle, jobDescription, userSkills, experienceLevel }) => {
+const buildProposalPrompt = ({
+    jobTitle,
+    jobDescription,
+    userSkills,
+    experienceLevel,
+}) => {
     const levelMap = {
-        entry: "Entry Level (0–2 years)",
-        intermediate: "Intermediate (2–5 years)",
-        expert: "Expert (5–10 years)",
-        senior: "Senior (10+ years)",
+        entry: "0–2 years",
+        intermediate: "2–5 years",
+        expert: "5–10 years",
+        senior: "10+ years",
     };
 
-    return `You are an expert Upwork proposal writer with a proven track record of winning contracts.
+    return `
+You are writing a real human Upwork proposal.
 
-Generate a compelling Upwork proposal for the following job:
+Your response must:
+- Sound natural, confident, and conversational
+- Be SHORT (100–180 words max)
+- Avoid generic AI phrases
+- Avoid greetings like "Dear Hiring Manager"
+- Avoid emojis
+- Avoid exaggerated claims
+- Avoid sounding desperate or overly formal
+- Focus directly on the client's problem
+- Mention only relevant skills and experience
+- End with a simple CTA
 
-**Job Title:** ${jobTitle}
+Write like an experienced freelancer who actually read the job post.
 
-**Job Description:**
+Job Title:
+${jobTitle}
+
+Job Description:
 ${jobDescription}
 
-**Freelancer Skills:** ${userSkills}
+Freelancer Skills:
+${userSkills}
 
-**Experience Level:** ${levelMap[experienceLevel] || experienceLevel}
+Experience:
+${levelMap[experienceLevel] || experienceLevel}
 
+Generate only the proposal text.
 `;
 };
 
