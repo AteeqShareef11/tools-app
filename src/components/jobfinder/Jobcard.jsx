@@ -30,6 +30,7 @@ export const JobCard = ({ job, index }) => {
                             {job.company}
                         </p>
 
+
                         {/* Badge row */}
                         <div className="flex flex-wrap gap-1.5 mt-2">
                             {job.location && (
@@ -71,6 +72,9 @@ export const JobCard = ({ job, index }) => {
                     </p>
                 )}
             </div>
+            <p className="text-white-400 text-sm font-medium mt-0.5">
+                {job.description}
+            </p>
 
             {/* ── Expanded section ─────────────────────────────────── */}
             {expanded && (
