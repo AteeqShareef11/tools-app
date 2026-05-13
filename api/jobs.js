@@ -3,14 +3,16 @@
 export default async function handler(req, res) {
   console.log("🔥 NEW CODE VERSION 2.0 LOADED");
   try {
-    const { title, skills, workType = "both", location } = req.body;
+    const body = req.body || {};
 
-    // ⚠️ skills must influence search (you're currently ignoring them)
+    const title = body.title;
+    const skills = body.skills;
+    const location = body.location;
+    const workType = body.workType || "both";
 
-    console.log("title", title);
-    console.log("skills", skills);
-    console.log("location", location);
-    console.log("req.body", req.body);
+    console.log("TITLE:", title);
+    console.log("SKILLS:", skills);
+    console.log("LOCATION:", location);
 
     const skillsText =
       Array.isArray(skills) && skills.length ? skills.join(" ") : "";
