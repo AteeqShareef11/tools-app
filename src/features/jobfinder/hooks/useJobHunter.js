@@ -59,9 +59,9 @@ export function useJobHunter() {
         const jobsRes = await fetch("/api/jobs", {
           method: "POST",
           body: JSON.stringify({
-            skills: result.skills,
-            title: result.title,
-            location: result.location,
+            skills: result.candidate.primarySkills,
+            title: result.candidate.title,
+            location: result.candidate.location,
             page: 1,
           }),
         });
