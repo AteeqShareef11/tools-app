@@ -3,16 +3,20 @@
 export default async function handler(req, res) {
   console.log("🔥 NEW CODE VERSION 2.0 LOADED");
   try {
-    const body = req.body || {};
+    let body = req.body;
+
+    // HARD normalize (fixes all Vercel/Next weirdness)
+    if (!body || typeof body === "string") {
+      body = JSON.parse(body || "{}");
+    } else {
+      body = JSON.parse(JSON.stringify(body));
+    }
 
     const title = body.title;
     const skills = body.skills;
     const location = body.location;
-    const workType = body.workType || "both";
 
-    console.log("TITLE:", title);
-    console.log("SKILLS:", skills);
-    console.log("LOCATION:", location);
+    console.log("FIXED BODY:", body);
 
     const skillsText =
       Array.isArray(skills) && skills.length ? skills.join(" ") : "";
