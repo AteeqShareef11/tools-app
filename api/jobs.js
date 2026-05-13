@@ -1,88 +1,106 @@
 /* eslint-disable no-undef */
-const cache = new Map(); // replace with Redis in production
 
 export default async function handler(req, res) {
   try {
-    const { skills = [], title = "", location = "remote", page = 1 } = req.body;
+    const {
+      title = "Software Developer",
+      skills = [],
+      workType = "both",
+      location = "",
+    } = req.body;
 
-    const cacheKey = JSON.stringify({ skills, title, location, page });
+    // ⚠️ skills must influence search (you're currently ignoring them)
+    const skillsText = Array.isArray(skills) ? skills.join(" ") : skills;
 
-    if (cache.has(cacheKey)) {
-      return res.status(200).json(cache.get(cacheKey));
+    // 🔥 build intelligent query
+    let queryParts = [title, skillsText, location];
+
+    if (workType === "remote") {
+      queryParts.push("remote");
     }
 
-    const query = encodeURIComponent(`${title || skills.join(" ")} developer`);
+    const query = encodeURIComponent(queryParts.filter(Boolean).join(" "));
 
-    const url = `https://jsearch.p.rapidapi.com/search?query=${query}&page=${page}&num_pages=1&country=us`;
-
-    const response = await fetch(url, {
-      headers: {
-        "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
-        "X-RapidAPI-Host": "jsearch.p.rapidapi.com",
+    const response = await fetch(
+      `https://jsearch.p.rapidapi.com/search?query=${query}&page=1&num_pages=1`,
+      {
+        headers: {
+          "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
+          "X-RapidAPI-Host": "jsearch.p.rapidapi.com",
+        },
       },
-    });
+    );
 
     const data = await response.json();
-    console.log("data", data);
 
-    let jobs = (data?.data || []).map(normalizeJob);
+    let jobs = (data?.data || []).map((job) => ({
+      id: job.job_id,
+      title: job.job_title,
+      company: job.employer_name,
+      location: job.job_city || job.job_country || location,
+      description: job.job_description || "",
+      workType: job.job_is_remote ? "Remote" : "On-site",
+      applyLink: job.job_apply_link,
+      source: "JSearch",
+    }));
 
-    // jobs = jobs
-    //   .map((job) => ({
-    //     ...job,
-    //     matchScore: scoreJob(job, { skills, title, location }),
-    //   }))
-    //   .filter((j) => j.matchScore >= 40)
-    //   .sort((a, b) => b.matchScore - a.matchScore);
+    // ⚠️ post-filtering (still needed because API is noisy)
+    if (workType !== "both") {
+      jobs = jobs.filter((j) =>
+        workType === "remote"
+          ? j.workType === "Remote"
+          : j.workType === "On-site",
+      );
+    }
 
-    const result = {
-      page,
+    return res.status(200).json({
       total: jobs.length,
-      jobs: jobs.slice(0, 10),
-    };
-
-    cache.set(cacheKey, result);
-
-    return res.status(200).json(result);
+      jobs,
+      queryUsed: decodeURIComponent(query),
+    });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 }
 
-function normalizeJob(job) {
-  return {
-    id: job.job_id,
-    title: job.job_title,
-    company: job.employer_name,
-    location: job.job_city || job.job_country,
-    description: job.job_description || "",
-    isRemote: job.job_is_remote,
-    applyLink: job.job_apply_link,
-    posted: job.job_posted_at_datetime_utc,
-  };
-}
+// function normalizeJob(job) {
+//   return {
+//     id: job.job_id,
+//     title: job.job_title,
+//     company: job.employer_name,
+//     location: job.job_city || job.job_country,
+//     description: job.job_description || "",
+//     isRemote: job.job_is_remote,
+//     applyLink: job.job_apply_link,
+//     posted: job.job_posted_at_datetime_utc,
+//   };
+// }
 
-function scoreJob(job, profile) {
-  let score = 0;
+// function scoreJob(job, profile) {
+//   let score = 0;
 
-  const text = (job.title + " " + job.description).toLowerCase();
+//   const fullText = normalize(`${job.title} ${job.description}`);
 
-  // skill match
-  profile.skills.forEach((skill) => {
-    if (text.includes(skill.toLowerCase())) {
-      score += 15;
-    }
-  });
+//   // TITLE MATCH
+//   if (fullText.includes(normalize(profile.title))) {
+//     score += 35;
+//   }
 
-  // title match
-  if (profile.title && text.includes(profile.title.toLowerCase())) {
-    score += 20;
-  }
+//   // SKILL MATCHES
+//   profile.skills.forEach((skill) => {
+//     const aliases = [skill, ...(SKILL_ALIASES[skill.toLowerCase()] || [])];
 
-  // remote preference
-  if (job.isRemote && profile.location === "remote") {
-    score += 10;
-  }
+//     aliases.forEach((alias) => {
+//       if (fullText.includes(normalize(alias))) {
+//         score += 10;
+//       }
+//     });
+//   });
 
-  return Math.min(score, 100);
-}
+//   // REMOTE BOOST
+//   if (profile.location === "remote" && job.isRemote) {
+//     score += 10;
+//   }
+
+//   return Math.min(score, 100);
+// }
