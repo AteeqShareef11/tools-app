@@ -15,6 +15,7 @@ export default async function handler(req, res) {
     console.log("TITLE:", title);
     console.log("SKILLS:", skills);
     console.log("LOCATION:", location);
+
     const skillsText =
       Array.isArray(skills) && skills.length ? skills.join(" ") : "";
 
