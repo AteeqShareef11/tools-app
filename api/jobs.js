@@ -13,7 +13,7 @@ export default async function handler(req, res) {
 
     const query = encodeURIComponent(`${title || skills.join(" ")} developer`);
 
-    const url = `https://jsearch.p.rapidapi.com/search?query=${query}&page=${page}&num_pages=1&country=pk`;
+    const url = `https://jsearch.p.rapidapi.com/search?query=${query}&page=${page}&num_pages=1&country=us`;
 
     const response = await fetch(url, {
       headers: {
@@ -23,31 +23,17 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
+    console.log("data", data);
 
     let jobs = (data?.data || []).map(normalizeJob);
 
-    jobs = jobs.map((job) => {
-      const matchScore = scoreJob(job, {
-        skills,
-        title,
-        location,
-      });
-
-      return {
-        ...job,
-        matchScore,
-      };
-    });
-
-    console.log(
-      jobs.map((j) => ({
-        title: j.title,
-        score: j.matchScore,
-      })),
-    );
-
-    // TEMP: remove aggressive filter
-    jobs = jobs.sort((a, b) => b.matchScore - a.matchScore);
+    // jobs = jobs
+    //   .map((job) => ({
+    //     ...job,
+    //     matchScore: scoreJob(job, { skills, title, location }),
+    //   }))
+    //   .filter((j) => j.matchScore >= 40)
+    //   .sort((a, b) => b.matchScore - a.matchScore);
 
     const result = {
       page,
@@ -79,26 +65,22 @@ function normalizeJob(job) {
 function scoreJob(job, profile) {
   let score = 0;
 
-  const fullText = normalize(`${job.title} ${job.description}`);
+  const text = (job.title + " " + job.description).toLowerCase();
 
-  // TITLE MATCH
-  if (fullText.includes(normalize(profile.title))) {
-    score += 35;
-  }
-
-  // SKILL MATCHES
+  // skill match
   profile.skills.forEach((skill) => {
-    const aliases = [skill, ...(SKILL_ALIASES[skill.toLowerCase()] || [])];
-
-    aliases.forEach((alias) => {
-      if (fullText.includes(normalize(alias))) {
-        score += 10;
-      }
-    });
+    if (text.includes(skill.toLowerCase())) {
+      score += 15;
+    }
   });
 
-  // REMOTE BOOST
-  if (profile.location === "remote" && job.isRemote) {
+  // title match
+  if (profile.title && text.includes(profile.title.toLowerCase())) {
+    score += 20;
+  }
+
+  // remote preference
+  if (job.isRemote && profile.location === "remote") {
     score += 10;
   }
 
