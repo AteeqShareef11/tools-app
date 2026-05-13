@@ -15,6 +15,7 @@ export default async function handler(req, res) {
     const title = body.title;
     const skills = body.skills;
     const location = body.location;
+    const workType = body.workType;
 
     console.log("FIXED BODY:", body);
 
