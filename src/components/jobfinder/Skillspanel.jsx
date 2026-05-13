@@ -56,7 +56,7 @@ function RecommendationList({ items, delay = 0 }) {
  *
  * @param {{ data: object }} props
  */
-export function SkillsPanel({ data }) {
+export const SkillsPanel = ({ data }) => {
     return (
         <div className="space-y-3">
             <ChipGroup
