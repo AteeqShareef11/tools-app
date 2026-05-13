@@ -61,6 +61,9 @@ export function useJobHunter() {
 
         const jobsRes = await fetch("/api/jobs", {
           method: "POST",
+          headers: {
+            "Content-Type": "application/json", // 🔥 THIS IS REQUIRED
+          },
           body: JSON.stringify({
             skills: result?.candidate?.primarySkills,
             title: result?.candidate?.title,
