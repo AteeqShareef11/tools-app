@@ -23,16 +23,17 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
+    console.log("data", data);
 
     let jobs = (data?.data || []).map(normalizeJob);
 
-    jobs = jobs
-      .map((job) => ({
-        ...job,
-        matchScore: scoreJob(job, { skills, title, location }),
-      }))
-      .filter((j) => j.matchScore >= 40)
-      .sort((a, b) => b.matchScore - a.matchScore);
+    // jobs = jobs
+    //   .map((job) => ({
+    //     ...job,
+    //     matchScore: scoreJob(job, { skills, title, location }),
+    //   }))
+    //   .filter((j) => j.matchScore >= 40)
+    //   .sort((a, b) => b.matchScore - a.matchScore);
 
     const result = {
       page,
