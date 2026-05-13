@@ -13,20 +13,20 @@ export default async function handler(req, res) {
     }
 
     const title = body.title;
-    const skills = body.skills;
+    // const skills = body.skills;
     const location = body.location;
     const workType = body.workType;
 
     console.log("FIXED BODY:", body);
 
-    const skillsText =
-      Array.isArray(skills) && skills.length ? skills.join(" ") : "";
+    // const skillsText =
+    //   Array.isArray(skills) && skills.length ? skills.join(" ") : "";
 
     const locationText = location?.trim() || "";
 
     const query = [
       title,
-      skillsText,
+      //   skillsText,
       locationText,
       workType === "remote" ? "remote" : "",
     ]
