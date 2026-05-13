@@ -13,7 +13,7 @@ export default async function handler(req, res) {
 
     const query = encodeURIComponent(`${title || skills.join(" ")} developer`);
 
-    const url = `https://jsearch.p.rapidapi.com/search?query=${query}&page=${page}&num_pages=1&country=us`;
+    const url = `https://jsearch.p.rapidapi.com/search?query=${query}&page=${page}&num_pages=1&country=pk`;
 
     const response = await fetch(url, {
       headers: {
@@ -23,17 +23,31 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-    console.log("data", data);
 
     let jobs = (data?.data || []).map(normalizeJob);
 
-    // jobs = jobs
-    //   .map((job) => ({
-    //     ...job,
-    //     matchScore: scoreJob(job, { skills, title, location }),
-    //   }))
-    //   .filter((j) => j.matchScore >= 40)
-    //   .sort((a, b) => b.matchScore - a.matchScore);
+    jobs = jobs.map((job) => {
+      const matchScore = scoreJob(job, {
+        skills,
+        title,
+        location,
+      });
+
+      return {
+        ...job,
+        matchScore,
+      };
+    });
+
+    console.log(
+      jobs.map((j) => ({
+        title: j.title,
+        score: j.matchScore,
+      })),
+    );
+
+    // TEMP: remove aggressive filter
+    jobs = jobs.sort((a, b) => b.matchScore - a.matchScore);
 
     const result = {
       page,
