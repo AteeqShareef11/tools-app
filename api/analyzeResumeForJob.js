@@ -109,6 +109,7 @@ export default async function handler(req, res) {
     const raw = data?.choices?.[0]?.message?.content || "{}";
 
     const profile = JSON.parse(raw.replace(/```json|```/g, ""));
+    console.log("profile", profile);
 
     return res.status(200).json(profile);
   } catch (err) {
