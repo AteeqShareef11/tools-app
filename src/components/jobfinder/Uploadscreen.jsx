@@ -35,7 +35,7 @@ export function UploadScreen({ onAnalyze, error }) {
     const displayError = localErr || error;
 
     return (
-        <div className="min-h-screen  flex items-center justify-center p-5">
+        <div className="min-h-screen bg-[#22222E]  flex items-center justify-center p-5">
             <div className="w-full max-w-md space-y-6">
 
                 {/* Hero */}

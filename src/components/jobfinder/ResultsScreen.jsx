@@ -57,7 +57,7 @@ export function ResultsScreen({ candidate, jobs, fileName, onReset }) {
   const [activeTab, setActiveTab] = useState("profile");
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-[#22222E]">
       <ResultsNavbar fileName={fileName} onReset={onReset} />
 
       <main className="max-w-2xl mx-auto p-5 space-y-4">
