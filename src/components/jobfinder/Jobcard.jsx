@@ -72,9 +72,7 @@ export const JobCard = ({ job, index }) => {
                     </p>
                 )}
             </div>
-            <p className="text-white-400 text-sm font-medium mt-0.5">
-                {job.description}
-            </p>
+
 
             {/* ── Expanded section ─────────────────────────────────── */}
             {expanded && (
@@ -82,6 +80,9 @@ export const JobCard = ({ job, index }) => {
                     className="px-5 pb-4 space-y-4 border-t"
                     style={{ borderColor: "rgba(255,255,255,0.06)" }}
                 >
+                    <p className="text-white  text-sm font-medium mt-0.5">
+                        {job.description}
+                    </p>
                     {/* Why it matches */}
                     {job.whyMatches?.length > 0 && (
                         <div className="pt-3">
