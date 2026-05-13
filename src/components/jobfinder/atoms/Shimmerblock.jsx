@@ -4,11 +4,11 @@
  *
  * @param {{ height?: number | string; width?: number | string; rounded?: string }} props
  */
-export function ShimmerBlock({
+export const ShimmerBlock = ({
     height = 14,
     width = "100%",
     rounded = "rounded-lg",
-}) {
+}) => {
     return (
         <div
             className={`shimmer-bg ${rounded}`}
@@ -24,7 +24,7 @@ export function ShimmerBlock({
  * ShimmerCard
  * A full skeleton card used while job results are loading.
  */
-export function ShimmerCard() {
+export const ShimmerCard = () => {
     return (
         <div className="glass rounded-2xl p-5 space-y-4">
             {/* Header row */}

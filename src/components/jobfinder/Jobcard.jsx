@@ -8,7 +8,7 @@ import { Badge, Chip, ScoreBar } from "./atoms";
  *
  * @param {{ job: object; index: number }} props
  */
-export function JobCard({ job, index }) {
+export const JobCard = ({ job, index }) => {
     const [expanded, setExpanded] = useState(false);
 
     const delay = `${index * 0.06}s`;

@@ -8,7 +8,7 @@ import { getScoreColor } from "../constants";
  *
  * @param {{ score: number; showLabel?: boolean; height?: string }} props
  */
-export function ScoreBar({ score, showLabel = true, height = "h-1.5" }) {
+export const ScoreBar = ({ score, showLabel = true, height = "h-1.5" }) => {
     const [filled, setFilled] = useState(false);
     const color = getScoreColor(score);
 
