@@ -2,7 +2,8 @@
  * HeroHeader
  * Top section of the upload screen — pill badge, title, subtitle.
  */
-export function HeroHeader() {
+
+const Heroheader = () => {
     return (
         <div className="text-center space-y-4 pt-4">
             {/* Powered-by pill */}
@@ -12,7 +13,7 @@ export function HeroHeader() {
             </div>
 
             {/* Title */}
-            <h1 className="font-cab font-black text-5xl grad-text leading-none tracking-tight">
+            <h1 className="font-cab   font-black text-5xl grad-text leading-none tracking-tight">
                 AI Job Hunter
             </h1>
 
@@ -22,5 +23,7 @@ export function HeroHeader() {
                 strategic career roadmap.
             </p>
         </div>
-    );
+    )
 }
+
+export default Heroheader

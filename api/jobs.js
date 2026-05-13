@@ -79,22 +79,26 @@ function normalizeJob(job) {
 function scoreJob(job, profile) {
   let score = 0;
 
-  const text = (job.title + " " + job.description).toLowerCase();
+  const fullText = normalize(`${job.title} ${job.description}`);
 
-  // skill match
-  profile.skills.forEach((skill) => {
-    if (text.includes(skill.toLowerCase())) {
-      score += 15;
-    }
-  });
-
-  // title match
-  if (profile.title && text.includes(profile.title.toLowerCase())) {
-    score += 20;
+  // TITLE MATCH
+  if (fullText.includes(normalize(profile.title))) {
+    score += 35;
   }
 
-  // remote preference
-  if (job.isRemote && profile.location === "remote") {
+  // SKILL MATCHES
+  profile.skills.forEach((skill) => {
+    const aliases = [skill, ...(SKILL_ALIASES[skill.toLowerCase()] || [])];
+
+    aliases.forEach((alias) => {
+      if (fullText.includes(normalize(alias))) {
+        score += 10;
+      }
+    });
+  });
+
+  // REMOTE BOOST
+  if (profile.location === "remote" && job.isRemote) {
     score += 10;
   }
 

@@ -1,89 +1,73 @@
-/** @type {import('tailwindcss').Config} */
 export default {
-  content: ["./index.html", "./src/**/*.{js,jsx,ts,tsx}"],
+  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
       fontFamily: {
-        cab: ["Cabinet Grotesk", "sans-serif"],
-        outfit: ["Outfit", "sans-serif"],
+        display: ["Bebas Neue", "sans-serif"],
+        body: ["DM Sans", "sans-serif"],
+        mono: ["DM Mono", "monospace"],
       },
       colors: {
-        brand: {
-          50: "#eef2ff",
-          100: "#e0e7ff",
-          200: "#c7d2fe",
-          300: "#a5b4fc",
-          400: "#818cf8",
-          500: "#6366f1",
-          600: "#4f46e5",
-          700: "#4338ca",
-          800: "#3730a3",
-          900: "#312e81",
+        ink: {
+          DEFAULT: "#0C0C10",
+          2: "#12121A",
+          3: "#1A1A26",
+          4: "#22222E",
+          5: "#2C2C3A",
         },
-        surface: {
-          DEFAULT: "#060610",
-          50: "#0a0a1a",
-          100: "#0f0f1f",
-          200: "#14142a",
-          300: "#1a1a35",
-          400: "#222240",
+        line: {
+          1: "rgba(255,255,255,0.06)",
+          2: "rgba(255,255,255,0.10)",
+          3: "rgba(255,255,255,0.18)",
+        },
+        accent: {
+          DEFAULT: "#C8FB4E",
+          hover: "#D4FF66",
+          purple: "#7B5CFF",
+          teal: "#00E5B4",
+          red: "#FF5C7B",
+        },
+        text: {
+          base: "#F0EEF8",
+          muted: "#6B6A80",
+          subtle: "#9997AE",
         },
       },
       keyframes: {
-        fadeUp: {
-          from: { opacity: "0", transform: "translateY(20px)" },
+        up: {
+          from: { opacity: "0", transform: "translateY(28px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
-        fadeIn: {
-          from: { opacity: "0" },
-          to: { opacity: "1" },
+        fadeIn: { from: { opacity: "0" }, to: { opacity: "1" } },
+        spin: { to: { transform: "rotate(360deg)" } },
+        scanLine: { "0%": { top: "-2px" }, "100%": { top: "100%" } },
+        glowPulse: {
+          "0%,100%": { opacity: "0.4" },
+          "50%": { opacity: "1" },
         },
-        shimmer: {
-          "0%": { backgroundPosition: "-400px 0" },
-          "100%": { backgroundPosition: "400px 0" },
+        float: {
+          "0%,100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-6px)" },
         },
-        gradFlow: {
-          "0%,100%": { backgroundPosition: "0% 50%" },
-          "50%": { backgroundPosition: "100% 50%" },
-        },
-        scanLine: {
-          "0%": { top: "0%" },
-          "100%": { top: "100%" },
-        },
-        spinSlow: {
-          to: { transform: "rotate(360deg)" },
-        },
-        pulse: {
-          "0%,100%": { opacity: "1" },
-          "50%": { opacity: "0.3" },
-        },
-        matchFill: {
-          from: { width: "0%" },
-        },
-        borderPulse: {
-          "0%,100%": { borderColor: "rgba(99,102,241,0.3)" },
-          "50%": { borderColor: "rgba(99,102,241,0.7)" },
+        ticker: {
+          "0%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(-50%)" },
         },
       },
       animation: {
-        "fade-up": "fadeUp 0.45s cubic-bezier(0.22,1,0.36,1) forwards",
-        "fade-in": "fadeIn 0.3s ease forwards",
-        shimmer: "shimmer 1.6s infinite",
-        "grad-flow": "gradFlow 5s ease infinite",
-        "scan-line": "scanLine 2s linear infinite",
-        "spin-slow": "spinSlow 3s linear infinite",
-        pulse: "pulse 1.5s ease infinite",
-        "match-fill": "matchFill 1.2s cubic-bezier(0.34,1.56,0.64,1) forwards",
-        "border-pulse": "borderPulse 2s ease infinite",
-      },
-      backgroundSize: {
-        200: "200% 200%",
-      },
-      boxShadow: {
-        glow: "0 0 0 1px rgba(99,102,241,0.2), 0 0 24px rgba(99,102,241,0.06)",
-        "glow-lg":
-          "0 0 0 1px rgba(99,102,241,0.25), 0 0 40px rgba(99,102,241,0.1)",
-        card: "0 4px 24px rgba(0,0,0,0.4)",
+        up: "up 0.55s cubic-bezier(0.16,1,0.3,1) both",
+        "up-1": "up 0.55s 0.08s cubic-bezier(0.16,1,0.3,1) both",
+        "up-2": "up 0.55s 0.16s cubic-bezier(0.16,1,0.3,1) both",
+        "up-3": "up 0.55s 0.24s cubic-bezier(0.16,1,0.3,1) both",
+        "up-4": "up 0.55s 0.32s cubic-bezier(0.16,1,0.3,1) both",
+        "fade-in": "fadeIn 0.4s ease both",
+        "spin-slow": "spin 8s linear infinite",
+        "spin-med": "spin 3s linear infinite reverse",
+        "spin-fast": "spin 2s linear infinite",
+        "glow-pulse": "glowPulse 2s ease infinite",
+        float: "float 3s ease infinite",
+        ticker: "ticker 20s linear infinite",
+        scan: "scanLine 1.5s linear infinite",
       },
     },
   },

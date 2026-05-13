@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { HeroHeader } from "./Heroheader";
 import { UploadZone } from "./Uploadzone";
 import { FeatureRow } from "./Featurerow";
+import Heroheader from "./Heroheader";
 
 // import { Spinner } from "../atoms";
 
@@ -35,10 +35,11 @@ export function UploadScreen({ onAnalyze, error }) {
     const displayError = localErr || error;
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-5">
+        <div className="min-h-screen  flex items-center justify-center p-5">
             <div className="w-full max-w-md space-y-6">
+
                 {/* Hero */}
-                <HeroHeader />
+                <Heroheader />
 
                 {/* Error banner */}
                 {displayError && (
