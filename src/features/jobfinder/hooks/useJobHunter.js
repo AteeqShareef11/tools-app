@@ -56,12 +56,15 @@ export function useJobHunter() {
       try {
         const resumeText = await extractResumeText(selectedFile);
         const result = await analyzeResume(resumeText);
+
+        console.log("result", result);
+
         const jobsRes = await fetch("/api/jobs", {
           method: "POST",
           body: JSON.stringify({
-            skills: result.candidate.primarySkills,
-            title: result.candidate.title,
-            location: result.candidate.location,
+            skills: result.primarySkills,
+            title: result.title,
+            location: result.location,
             page: 1,
           }),
         });
