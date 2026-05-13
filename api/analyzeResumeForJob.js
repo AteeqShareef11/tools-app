@@ -78,20 +78,7 @@ Validation requirements:
 `;
 export default async function handler(req, res) {
   try {
-    if (req.method !== "POST") {
-      return res.status(405).json({ error: "Method not allowed" });
-    }
-
     const { resumeText } = req.body;
-
-    if (!resumeText || resumeText.trim().length < 80) {
-      return res.status(400).json({
-        error: "Resume content is too short.",
-      });
-    }
-
-    // hard safety: prevent huge payload abuse
-    const trimmedResume = resumeText.slice(0, 12000);
 
     const response = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
@@ -104,90 +91,27 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           model: "llama-3.3-70b-versatile",
           temperature: 0.2,
-          top_p: 1,
-          max_tokens: 3500,
-
           messages: [
             {
               role: "system",
-              content: SYSTEM_PROMPT, // 👈 keep prompt in env
+              content: SYSTEM_PROMPT,
             },
             {
               role: "user",
-              content: `Analyze this resume and return ONLY valid JSON:\n\n${trimmedResume}`,
+              content: resumeText,
             },
           ],
         }),
       },
     );
 
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-
-      return res.status(response.status).json({
-        error: err?.error?.message || "Groq API error",
-      });
-    }
-
     const data = await response.json();
+    const raw = data?.choices?.[0]?.message?.content || "{}";
 
-    const raw = data?.choices?.[0]?.message?.content?.trim() || "";
+    const profile = JSON.parse(raw.replace(/```json|```/g, ""));
 
-    const parsed = parseStrictJSON(raw);
-
-    // optional: server-side sanity validation
-    const safe = validateResponse(parsed);
-
-    return res.status(200).json(safe);
-  } catch (error) {
-    console.error("Resume analysis error:", error);
-
-    return res.status(500).json({
-      error: error.message || "Internal server error",
-    });
+    return res.status(200).json(profile);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
   }
-}
-
-function parseStrictJSON(raw) {
-  const clean = raw.replace(/```json|```/g, "").trim();
-
-  try {
-    return JSON.parse(clean);
-  } catch {
-    const match = clean.match(/\{[\s\S]*\}/);
-    if (match) return JSON.parse(match[0]);
-
-    throw new Error("Failed to parse AI response JSON");
-  }
-}
-
-function validateResponse(data) {
-  if (!data || typeof data !== "object") {
-    throw new Error("Invalid response format");
-  }
-
-  // enforce jobs safety rules
-  if (!Array.isArray(data.jobs)) data.jobs = [];
-
-  data.jobs = data.jobs
-    .filter((job) => job && job.matchScore >= 65)
-    .slice(0, 10)
-    .map((job) => ({
-      ...job,
-      matchScore: clamp(job.matchScore),
-      applyLink: sanitizeUrl(job.applyLink),
-    }));
-
-  return data;
-}
-
-function clamp(score) {
-  if (typeof score !== "number") return 0;
-  return Math.max(0, Math.min(100, score));
-}
-
-function sanitizeUrl(url) {
-  if (typeof url !== "string") return null;
-  if (!url.startsWith("https://")) return null;
-  return url;
 }
