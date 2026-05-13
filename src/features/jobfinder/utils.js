@@ -147,6 +147,7 @@ export async function analyzeResume(resumeText) {
     if (!response.ok) {
       throw new Error(data?.error || "Analysis failed");
     }
+    console.log("data", data);
 
     return data;
   } catch (err) {
