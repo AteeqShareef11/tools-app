@@ -13,7 +13,7 @@ import { StatCard } from "./Statcard";
  *
  * @param {{ data: object }} props
  */
-export function CandidateBanner({ data }) {
+export const CandidateBanner = ({ data }) => {
     const initial = (data.name || "?").charAt(0).toUpperCase();
 
     return (

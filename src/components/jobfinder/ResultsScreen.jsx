@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { CandidateBanner } from "./CandidateBanner";
 import { SkillsPanel } from "./SkillsPanel";
 import { JobsPanel } from "./JobsPanel";
 import { TabBar } from "./TabBar";
+import { CandidateBanner } from "./Candidatebanner";
 
 /**
  * ResultsNavbar
