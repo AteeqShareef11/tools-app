@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { HeroHeader } from "./HeroHeader";
-import { FeatureRow } from "./FeatureRow";
-import { UploadZone } from "./UploadZone";
+import { HeroHeader } from "./Heroheader";
+import { UploadZone } from "./Uploadzone";
+import { FeatureRow } from "./Featurerow";
+
 // import { Spinner } from "../atoms";
 
 /**
