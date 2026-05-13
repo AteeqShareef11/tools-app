@@ -1,6 +1,7 @@
 /* eslint-disable no-undef */
 
 export default async function handler(req, res) {
+  console.log("🔥 NEW CODE VERSION 2.0 LOADED");
   try {
     const {
       title = "Software Developer",
@@ -11,8 +12,9 @@ export default async function handler(req, res) {
 
     // ⚠️ skills must influence search (you're currently ignoring them)
 
-    console.log("req", req.body);
-
+    console.log("TITLE:", title);
+    console.log("SKILLS:", skills);
+    console.log("LOCATION:", location);
     const skillsText =
       Array.isArray(skills) && skills.length ? skills.join(" ") : "";
 
