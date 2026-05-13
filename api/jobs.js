@@ -10,19 +10,27 @@ export default async function handler(req, res) {
     } = req.body;
 
     // ⚠️ skills must influence search (you're currently ignoring them)
-    const skillsText = Array.isArray(skills) ? skills.join(" ") : skills;
 
-    // 🔥 build intelligent query
-    let queryParts = [title, skillsText, location];
+    console.log("req", req.body);
 
-    if (workType === "remote") {
-      queryParts.push("remote");
-    }
+    const skillsText =
+      Array.isArray(skills) && skills.length ? skills.join(" ") : "";
 
-    const query = encodeURIComponent(queryParts.filter(Boolean).join(" "));
+    const locationText = location?.trim() || "";
+
+    const query = [
+      title,
+      skillsText,
+      locationText,
+      workType === "remote" ? "remote" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    const encodedQuery = encodeURIComponent(query);
 
     const response = await fetch(
-      `https://jsearch.p.rapidapi.com/search?query=${query}&page=1&num_pages=1`,
+      `https://jsearch.p.rapidapi.com/search?query=${encodedQuery}&page=1&num_pages=1`,
       {
         headers: {
           "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
